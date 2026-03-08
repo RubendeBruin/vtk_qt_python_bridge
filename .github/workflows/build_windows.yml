@@ -1,0 +1,104 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      vtk_version:
+        description: 'VTK version tag (e.g. v9.4.1)'
+        required: true
+        default: 'v9.4.1'
+      qt_version:
+        description: 'Qt version (e.g. 6.8.3)'
+        required: true
+        default: '6.8.3'
+      python_version:
+        description: 'Python version (e.g. 3.12)'
+        required: true
+        default: '3.12'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ inputs.python_version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install pybind11
+        run: pip install pybind11
+
+      - name: Get pybind11 CMake directory
+        id: pybind11
+        shell: pwsh
+        run: |
+          $dir = python -c "import pybind11; print(pybind11.get_cmake_dir())"
+          echo "cmake_dir=$dir" >> $env:GITHUB_OUTPUT
+
+      - name: Install Qt ${{ inputs.qt_version }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ inputs.qt_version }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Cache VTK install
+        id: cache-vtk
+        uses: actions/cache@v4
+        with:
+          path: vtk-install
+          key: vtk-${{ inputs.vtk_version }}-qt-${{ inputs.qt_version }}-windows
+
+      - name: Clone VTK ${{ inputs.vtk_version }}
+        if: steps.cache-vtk.outputs.cache-hit != 'true'
+        run: >
+          git clone
+          --depth 1
+          --branch ${{ inputs.vtk_version }}
+          https://gitlab.kitware.com/vtk/vtk.git
+          vtk-src
+
+      - name: Configure VTK
+        if: steps.cache-vtk.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          cmake -S vtk-src -B vtk-build `
+            -DVTK_BUILD_TESTING=OFF `
+            -DVTK_BUILD_EXAMPLES=OFF `
+            -DVTK_BUILD_ALL_MODULES=OFF `
+            -DVTK_GROUP_ENABLE_Qt=WANT `
+            -DVTK_MODULE_ENABLE_VTK_GUISupportQt=YES `
+            -DVTK_MODULE_ENABLE_VTK_RenderingOpenGL2=YES `
+            -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}\vtk-install" `
+            -DCMAKE_PREFIX_PATH="${{ env.QT_ROOT_DIR }}"
+
+      - name: Build and install VTK
+        if: steps.cache-vtk.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          cmake --build vtk-build --config Release -j $env:NUMBER_OF_PROCESSORS
+          cmake --install vtk-build --config Release
+
+      - name: Configure bridge
+        shell: pwsh
+        run: |
+          cmake -S . -B build `
+            -DCMAKE_PREFIX_PATH="${{ github.workspace }}\vtk-install;${{ env.QT_ROOT_DIR }}" `
+            -Dpybind11_DIR="${{ steps.pybind11.outputs.cmake_dir }}"
+
+      - name: Build bridge
+        run: cmake --build build --config Release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vtk_qt_bridge-${{ inputs.vtk_version }}-qt${{ inputs.qt_version }}-py${{ inputs.python_version }}
+          path: build\Release\*.pyd
