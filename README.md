@@ -1,28 +1,16 @@
-# Native Qt/VTK Bridge (Option 2)
+# Native Qt/VTK Bridge
 
-This folder contains a minimal C++ Python extension (`vtk_qt_bridge`) that creates a
+This repo contains a minimal C++ Python extension (`vtk_qt_bridge`) that creates a
 `QVTKOpenGLNativeWidget` and returns its raw pointer to Python. Python can wrap the
 pointer into a `QWidget` using `shiboken6.wrapInstance`.
 
 ## Why this exists
 
+Ultimate purpose is to enable rendering into an alien widget using python. 
+
 `VTK::GUISupportQt` is marked `EXCLUDE_WRAP` for Python in VTK, so the C++ adapter
 classes are not directly available from `vtkmodules` Python bindings. This bridge
 exposes a tiny C++ API instead.
-
-## Current status in this environment
-
-- Qt SDK installed: `C:\Qt\6.10.2\msvc2022_64`
-- VTK configured against Qt successfully in `VTK/build-bridge`
-- `vtk_qt_bridge` compiled successfully in `cpp_bridge/build/Release`
-
-At runtime, the Python process needs DLL search paths for:
-
-- `C:\debug\vtkdock\VTK\build-bridge\bin\Release`
-- `C:\Qt\6.10.2\msvc2022_64\bin`
-- `C:\debug\vtkdock\.venv\Lib\site-packages\PySide6`
-
-`test_bridge.py` already adds these via `os.add_dll_directory(...)`.
 
 ## Prerequisites
 
@@ -53,9 +41,8 @@ cmake -S cpp_bridge -B cpp_bridge/build \
 cmake --build cpp_bridge/build --config Release
 ```
 
-## Usage after build
+## Example use
 
-```powershell
-./cpp_bridge/runtime_env.ps1
-C:/debug/vtkdock/.venv/Scripts/python.exe cpp_bridge/test_bridge.py
+the test_bridge.py file demonstrates the intended use
+
 ```
