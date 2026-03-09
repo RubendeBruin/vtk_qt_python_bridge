@@ -34,3 +34,25 @@ target_compile_definitions(vtk_qt_bridge PRIVATE
   NOMINMAX
   WIN32_LEAN_AND_MEAN
 )
+
+# Install the extension module and bundle its runtime DLL dependencies so that
+# the produced artifact is self-contained and can be used without separately
+# installing VTK and Qt.
+install(TARGETS vtk_qt_bridge
+  RUNTIME_DEPENDENCY_SET bridge_deps
+  LIBRARY DESTINATION .
+)
+
+install(RUNTIME_DEPENDENCY_SET bridge_deps
+  PRE_EXCLUDE_REGEXES
+    "api-ms-.*"
+    "ext-ms-.*"
+  POST_EXCLUDE_REGEXES
+    ".*[Ss]ystem32[\\/].*\\.dll"
+    ".*[Ss]ysWOW64[\\/].*\\.dll"
+    "python[0-9]+\\.dll"
+  DIRECTORIES
+    $<TARGET_FILE_DIR:Qt6::Core>
+    $<TARGET_FILE_DIR:VTK::CommonCore>
+  DESTINATION .
+)

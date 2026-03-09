@@ -97,8 +97,12 @@ jobs:
       - name: Build bridge
         run: cmake --build build --config Release
 
+      - name: Install bridge with dependencies
+        shell: pwsh
+        run: cmake --install build --config Release --prefix "${{ github.workspace }}\dist"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: vtk_qt_bridge-${{ inputs.vtk_version }}-qt${{ inputs.qt_version }}-py${{ inputs.python_version }}
-          path: build\Release\*.pyd
+          path: dist\
