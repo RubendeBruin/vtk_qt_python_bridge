@@ -90,9 +90,11 @@ jobs:
       - name: Configure bridge
         shell: pwsh
         run: |
+          $pythonExe = (python -c "import sys; print(sys.executable)")
           cmake -S . -B build `
             -DCMAKE_PREFIX_PATH="${{ github.workspace }}\vtk-install;${{ env.QT_ROOT_DIR }}" `
-            -Dpybind11_DIR="${{ steps.pybind11.outputs.cmake_dir }}"
+            -Dpybind11_DIR="${{ steps.pybind11.outputs.cmake_dir }}" `
+            -DPython_EXECUTABLE="$pythonExe"
 
       - name: Build bridge
         run: cmake --build build --config Release
